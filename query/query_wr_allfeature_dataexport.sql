@@ -1,14 +1,18 @@
-﻿DROP TABLE Data_WRPlay;
+﻿DROP TABLE Data_WRAllPlay;
 
 SELECT 
-		pr.player_id
+		-- Meta
+		pr.player_id AS player_id_orig
 		,pr.full_name
 		,pr.position
 		,pr.team
 		,g.gsis_id
-		,g.season_year
-		,g.week
-		,COUNT(DISTINCT pp.play_id) 	AS NbPlays
+		-- Numbers
+		,CAST(SUBSTRING(pr.player_id from '...$') AS INTEGER) AS player_id
+		,g.season_year			AS season_year
+		,g.week				AS week
+		,COALESCE(i.injury, 0)		AS injury_flag
+		,COUNT(DISTINCT pp.play_id) 	AS nb_plays
 		, SUM(pp.defense_ast)		AS defense_astĻĽĺ
 		, SUM(pp.defense_ffum)      AS defense_ffum
 		, SUM(defense_fgblk)        AS defense_fgblk
@@ -110,6 +114,10 @@ LEFT JOIN 	play_player pp
 	ON 	(pr.player_id = pp.player_id)
 LEFT JOIN	game g
 	ON	(g.gsis_id = pp.gsis_id)
+LEFT JOIN	data_injury i
+	ON	(i.season_year = g.season_year AND
+		i.week = g.week AND
+		pr.full_name = i.full_name)
 WHERE		g.season_year = 2012
 		AND g.season_type = 'Regular'
 		AND pr.position = 'WR'
@@ -119,6 +127,7 @@ GROUP BY	pr.player_id
 		,g.gsis_id
 		,g.week
 		,g.season_year
+		,i.injury
 ORDER BY	pr.player_id
 		,pr.full_name
  		,g.gsis_id
@@ -136,7 +145,8 @@ WHERE	season_year = 2012
 )
 ,DistinctPlayers AS (
 SELECT 	DISTINCT
-	player_id
+	player_id_orig
+	,player_id
 	,full_name
 	,position
 	,team
@@ -144,14 +154,16 @@ FROM 	Data_WRAllPlay
 )
 ,InitAllMatches AS (
 SELECT
-		pr.player_id
+		pr.player_id_orig
 		,pr.full_name
 		,pr.position
 		,pr.team
 		,NULL		AS gsis_id
+		,pr.player_id
 		,g.season_year
 		,g.week
-		, 0	AS NbPlays	
+		, 0	AS injury_flag
+		, 0	AS nb_plays	
 		, 0     AS defense_ast
 		, 0     AS defense_ffum
 		, 0     AS defense_fgblk
@@ -257,7 +269,7 @@ SELECT
 		i.*
 FROM		InitAllMatches i
 LEFT JOIN	Data_WRAllPlay d
-	ON	(i.player_id = d.player_id AND
+	ON	(i.player_id_orig = d.player_id_orig AND
 		i.season_year = d.season_year AND
 		i.week = d.week)
 WHERE		d.week IS NULL
