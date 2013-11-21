@@ -26,7 +26,7 @@ Predicts the likeliness of a team to win over another one only based on its Wide
 
 ### Launching
 
-    >  chmod ug+x svmPred.R
-    >  ./svmPred.R
+    $  chmod ug+x svmPred.R
+    $  ./svmPred.R
 
 The R script plots the confusion matrix when training on the full training set. It also plots the training and dev error, and enables you to save the model into a file. (all of these options can be enabled/disable in the beginning of the script).
