@@ -4,12 +4,17 @@
 wd <- getwd()
 setwd(paste(wd, "/data", sep=""))
 
-# plot parameters
-timeErrorPlot <- T
+# Parameters
+trainModel = T # if set to F will load the model from modelFile
+timeErrorPlot = T
+askForSave = T
+modelFile = "trainsvm.RData"
 
 # load in vectors
 file_players <- "./WRDataAll_Agg.csv"
 file_games <- "./GameDataAll.csv"
+
+message("Loading data...")
 
 # load vectors
 players <- read.csv(file_players, header=T)
@@ -28,45 +33,85 @@ feature_team$player_id <- NULL;
 x = list();
 for(game in 1:nrow(games)) {
   row <- cbind(
-    feature_team[feature_team$team==games$home_team[game] & feature_team$season_year==games$season_year[game],-1],
-    feature_team[feature_team$team==games$away_team[game] & feature_team$season_year==games$season_year[game], -1]
+    feature_team[feature_team$team==games$home_team[game] & feature_team$season_year==games$season_year[game],-c(1)],
+    feature_team[feature_team$team==games$away_team[game] & feature_team$season_year==games$season_year[game], -c(1)]
   );
   x <- rbind(x, row)
 }
 
+
+# keeping sample
+holdout = sample(nrow(x), nrow(x)/5);
+xtrain = x[-holdout,]
+ytrain = y[-holdout]
+
+xtest = x[holdout,]
+ytest = y[holdout]
+
+message("-> Done Loading data")
+
+if(trainModel) {
 # train data using SVM
-library(LiblineaR)
-model = LiblineaR(data=x, labels=y);
+  message("Training model...")
+  library(LiblineaR)
+  model = LiblineaR(data=xtrain, labels=ytrain);
 
 # computing error
-p = predict(model, x);
+  p = predict(model, xtrain);
 
 # global error
-err = sum(abs(p$predictions - y)/2)/nrow(games);
-print(paste("Training error:", err));
+  err = sum(abs(p$predictions - ytrain)/2)/nrow(games);
+  message(paste("Training error:", err));
 
 # displaying confusion table
-print("Confusion table:")
-res = table(p$predictions,y)
-print(res)
+  message("Confusion table:")
+  res = table(p$predictions,ytrain)
+  print(res)
+  message("-> Done training model")
+} else {
+  message("Loading model...")
+  model = load(modelFile);
+  message("-> Done loading model")
+}
 
 if(timeErrorPlot) {
+  message("Plotting train and test error...")
 
-ngames = nrow(games)
-samples = seq(ngames/30, ngames, ngames/30);
-errList = list();
-for(i in samples) {
-  modi <- LiblineaR(data=x[1:i,], labels=y[1:i]);
+  library(LiblineaR)
+  n = nrow(xtrain);
+  samples = seq(n/30, n, n/30);
+  errTrainList = list();
+  errTestList = list();
+  for(i in samples) {
+    modi <- LiblineaR(data=xtrain[1:i,], labels=ytrain[1:i]);
 
-  # computing error
-  pred <- predict(modi, x);
+# computing error
+    predTrain <- predict(modi, xtrain[1:i,]);
+    predTest <- predict(modi, xtest);
 
-  errList <- rbind(errList, sum(abs(pred$predictions - y)/2)/ngames);
-} 
-print(errList)
-X11()
-plot(samples, errList, type="b", xlab="Training examples", ylab="Error");
-message("Press Return To Continue")
-invisible(readLines("stdin", n=1))
-dev.off()
+    errTrainList <- rbind(errTrainList, sum(abs(predTrain$predictions - ytrain[1:i])/2)/i);
+    errTestList <- rbind(errTestList, sum(abs(predTest$predictions - ytest)/2)/length(ytest));
+  } 
+  X11()
+# png("svm-train-error.png")
+  plot(samples, errTrainList, 
+    ylim=range(errTrainList, errTestList), 
+    type="b", col="green", 
+    xlab="Training examples", ylab="Error");
+  lines(samples, errTestList, 
+    type="b", col="red");
+  legend("bottomright", legend=c("Training Error", "Test Error"), pch="oo", col=c("green", "red"));
+  
+  message("-> Done. Continue? [ENTER]")
+  invisible(readLines("stdin", n=1))
+  #dev.off()
+}
+
+if(askForSave) {
+  message("Do you want to save the model? (y/n) ")
+  ans <- readLines("stdin", n=1)
+  if(ans == "y") {
+    save(model, file=modelFile);
+    message(paste("File saved at", modelFile));
+  }
 }
