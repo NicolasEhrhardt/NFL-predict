@@ -102,7 +102,8 @@ SUM(rushing_twopta) AS    rushing_twopta,
 SUM(rushing_twoptm) AS    rushing_twoptm,
 SUM(rushing_twoptmissed) AS   rushing_twoptmissed,
 SUM(rushing_yds) AS    rushing_yds
-FROM  data_wrallplay
+FROM  data_allplay
+WHERE team != 'UNK'
 GROUP BY
 player_id_orig,
 full_name,
