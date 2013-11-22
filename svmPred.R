@@ -5,40 +5,54 @@ wd <- getwd()
 setwd(paste(wd, "/data", sep=""))
 
 # Parameters
-trainModel = T # if set to F will load the model from modelFile
+trainModel = F # if set to F will load the model from modelFile
 timeErrorPlot = T
 askForSave = T
-modelFile = "trainsvm.RData"
+computeFeature = F
+
+modelFile = "trainSvmAll.RData"
+featureFile = "sumFeature.RData"
 
 # load in vectors
-file_players <- "./WRDataAll_Agg.csv"
-file_games <- "./GameDataAll.csv"
+file_players = "./DataAll_Agg.csv"
+file_games = "./GameDataAll.csv"
 
 message("Loading data...")
+if(computeFeature) {
 
 # load vectors
-players <- read.csv(file_players, header=T)
-games <- read.csv(file_games, header=T)
-y <- games$winning
+  players <- read.csv(file_players, header=T)
+  games <- read.csv(file_games, header=T)
+  y <- games$winning
 
-feature_team <- aggregate(. ~ team + season_year, data=players, FUN=sum);
+  feature_team <- aggregate(. ~ team + season_year, data=players, FUN=sum);
 # cleaning
-feature_team$player_id_orig <- NULL;
-feature_team$full_name <- NULL;
-feature_team$position <- NULL;
-feature_team$player_id <- NULL;
-
+  feature_team$player_id_orig <- NULL;
+  feature_team$full_name <- NULL;
+  feature_team$position <- NULL;
+  feature_team$player_id <- NULL;
 
 # creating feature vector for teams
-x = list();
-for(game in 1:nrow(games)) {
-  row <- cbind(
-    feature_team[feature_team$team==games$home_team[game] & feature_team$season_year==games$season_year[game],-c(1)],
-    feature_team[feature_team$team==games$away_team[game] & feature_team$season_year==games$season_year[game], -c(1)]
-  );
-  x <- rbind(x, row)
-}
+  x = list();
+  ngames = nrow(games);
+  for(game in 1:ngames) {
+    if(game %% round(ngames / 10) == 0) {
+      message(paste(ceiling(game / ngames * 100), "%"));
+    }
 
+    row <- cbind(
+      feature_team[feature_team$team==games$home_team[game] & feature_team$season_year==games$season_year[game], -c(1, 2)],
+      feature_team[feature_team$team==games$away_team[game] & feature_team$season_year==games$season_year[game], -c(1, 2)]
+    );
+    x <- rbind(x, row)
+  }
+
+  save(x, y, file=featureFile);
+
+} else {
+  load(featureFile);  
+}
+message("-> Done Loading data")
 
 # keeping sample
 holdout = sample(nrow(x), nrow(x)/5);
@@ -48,7 +62,7 @@ ytrain = y[-holdout]
 xtest = x[holdout,]
 ytest = y[holdout]
 
-message("-> Done Loading data")
+
 
 if(trainModel) {
 # train data using SVM
@@ -70,7 +84,7 @@ if(trainModel) {
   message("-> Done training model")
 } else {
   message("Loading model...")
-  model = load(modelFile);
+  load(modelFile);
   message("-> Done loading model")
 }
 
@@ -107,7 +121,7 @@ if(timeErrorPlot) {
   #dev.off()
 }
 
-if(askForSave) {
+if(askForSave & trainModel) {
   message("Do you want to save the model? (y/n) ")
   ans <- readLines("stdin", n=1)
   if(ans == "y") {
