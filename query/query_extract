@@ -1,20 +1,43 @@
-﻿DROP TABLE Data_AllPlay;
+﻿SELECT 		player_id_orig
+		,MAX(
+		CASE WHEN season_year = 2009 THEN team
+		ELSE NULL END
+		) AS team_2009
+		,MAX(
+		CASE WHEN season_year = 2010 THEN team
+		ELSE NULL END
+		) AS team_2010
+		,MAX(
+		CASE WHEN season_year = 2011 THEN team
+		ELSE NULL END
+		) AS team_2011
+		,MAX(
+		CASE WHEN season_year = 2012 THEN team
+		ELSE NULL END
+		) AS team_2012
+		,MAX(
+		CASE WHEN season_year = 2013 THEN team
+		ELSE NULL END
+		) AS team_2013
+INTO		data_PlayerHistory
+FROM 		data_allplay
+GROUP BY 	player_id_orig;
+
+SELECT * FROM data_PlayerHistory;
 
 SELECT 
 		-- Meta
-		pr.player_id AS player_id_orig
-		,pr.full_name
-		,pr.position
-		,pp.team
-		,g.gsis_id
+		player_id
+		,full_name
+		,position
+		,team
 		-- Numbers
-		,CAST(SUBSTRING(pr.player_id from 4) AS INTEGER) AS player_id
-		,g.season_year			AS season_year
-		,g.week				AS week
-		,COALESCE(i.injury, 0)		AS injury_flag
-		,COUNT(DISTINCT pp.play_id) 	AS nb_plays
-		, SUM(pp.defense_ast)		AS defense_ast
-		, SUM(pp.defense_ffum)      	AS defense_ffum
+		, season_year			
+		, SUM(nb_plays) 		AS nb_plays
+		, SUM(injury_flag)		AS injury_sum
+		, MAX(injury_flag)		AS injury_max
+		, SUM(defense_ast)		AS defense_ast
+		, SUM(defense_ffum)      	AS defense_ffum
 		, SUM(defense_fgblk)        	AS defense_fgblk
 		, SUM(defense_frec)         	AS defense_frec
 		, SUM(defense_frec_tds)         AS defense_frec_tds
@@ -108,29 +131,10 @@ SELECT
 		, SUM(rushing_twoptm)         	AS rushing_twoptm
 		, SUM(rushing_twoptmissed)      AS rushing_twoptmissed
 		, SUM(rushing_yds)          	AS rushing_yds
-INTO		Data_AllPlay
-FROM 		player pr
-LEFT JOIN 	play_player pp
-	ON 	(pr.player_id = pp.player_id)
-LEFT JOIN	game g
-	ON	(g.gsis_id = pp.gsis_id)
-LEFT JOIN	data_injury i
-	ON	(i.season_year = g.season_year AND
-		i.week = g.week AND
-		pr.full_name = i.full_name)
-WHERE		g.season_type = 'Regular'
-		-- AND pr.position = 'WR'
- 		-- AND g.season_year < 2013
-GROUP BY	pr.player_id
-		,pr.full_name
-		,pp.team
-		,g.gsis_id
-		,g.week
-		,g.season_year
-		,i.injury
-ORDER BY	pr.player_id
-		,pr.full_name
- 		,g.gsis_id
-		,g.season_year
-		,g.week
+FROM		Data_AllPlay
+GROUP BY	player_id
+		,full_name
+		,position
+		,team
+		,season_year
 ;

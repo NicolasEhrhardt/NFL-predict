@@ -10,8 +10,9 @@
 	END AS winning
        
 FROM 	game
-WHERE 	season_year < 2013 
-	AND season_type = 'Regular'
+WHERE 	--season_year < 2013 
+	--AND 
+	season_type = 'Regular'
 	AND CASE 
 		WHEN home_score > away_score THEN 1
 		WHEN away_score > home_score THEN -1
