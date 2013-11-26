@@ -1,5 +1,4 @@
 #!/usr/bin/Rscript
-
 # TODO
 # Function to evaluate team one team based on the other ones
 # - keep tracks of the teams in a more flexible way
@@ -10,9 +9,9 @@
 # Features
 computeFeature = F
 featureSave = T
-k = 6
+k = 4
 polyDeg = 1
-featureFile = "model/logreg-feat-kmeans-6k-1p-konly.RData"
+featureFile = "model/logreg-feat-kmeans-4k-1p-konly.RData"
 
 # Training
 trainModel = F # if set to F will load the model from modelFile
@@ -22,22 +21,24 @@ svmModel = F
 linregModel = T
 
 modelSave = T
-modelFile = "model/logreg-6k-1p-konly.RData"
+modelFile = "model/logreg-4k-1p-konly.RData"
 
 # Analysis
-crossvalidationErr = T
+crossvalidationErr = F
 timeErrorPlot = F
 graphSave = F
-graphFile = "img/logreg-err-6k-1p-konly.png"
+graphFile = "img/logreg-err-4k-1p-konly.png"
 
 # load in vectors
-file_players = "data/DataAll_Agg.csv"
+file_players = "data/DataAll_Agg_v3.csv"
+file_historyplayers = "data/HistoryPlayerAll.csv"
 file_games = "data/GameDataAll.csv"
 
 message("+-> Loading data...")
 
 # load vectors
 players <- read.csv(file_players, header=T)
+historyplayers <- read.csv(file_historyplayers, header=T)
 games <- read.csv(file_games, header=T)
 # Deleting unusable seasons
 games <- games[!(games$season_year == 2009),];
@@ -50,79 +51,37 @@ library(e1071)
 ## Function library ##
 ######################
 
-# Function: swapPlayers
-# =====================
-# Swap players in the dataframe (no computation)
-
-swapPlayers <- function(featurePlayer, teamFrom, playerFrom, teamTo, PlayerTo) {
-  featurePlayer$team[featurePlayer$player_id == playerFrom] <- teamFrom;
-  featurePlayer$team[featurePlayer$player_id == playerTo] <- teamTo;
-
-  return(featurePlayer);
-}
-
-# Function: evaluateTeam
-# ======================
-# Compute the prediction of the number of victories
-
-evaluateTeam <- function(featureTeam, model, evalTeam) {
-  x1 = list();
-  x2 = list();
-  for(otherTeam in levels(featureTeam$team[featureTeam$team != evalTeam])) {
-    x1 <- rbind(
-      x1, 
-      computeGameFeature(
-        featureTeam[featureTeam$team == evalTeam, -c(1, 2)], 
-        featureTeam[featureTeam$team == otherTeam, -c(1, 2)]
-      )
-    );
-    x2 <- rbind(
-      x2, 
-      computeGameFeature(
-        featureTeam[featureTeam$team == otherTeam, -c(1, 2)], 
-        featureTeam[featureTeam$team == evalTeam, -c(1, 2)]
-      )
-    );
-  }
-  pred1 = predict(model, x1);
-  pred2 = predict(model, x2);
-
-  predict1 = pred1$predictions;
-  predict2 = pred2$predictions;
-
-  print(predict1);
-  print(predict2);
-
-  return( (sum(predict1[(predict1+1)/2]) + sum(predict2[(1-predict2)/2])) / (length(predict1) + length(predict2)) );
-}
-
 # Function: computeFeatureTeam
 # ============================
 # compute feature of teams in teamList (usually called after swap players)
 
 computeFeatureTeam <- function(features) {
   data <- features;
-  if(polyDeg) {
+  if(polyDeg > 1) {
     for(i in 2:polyDeg) {
-      data <- cbind(data, features[, !(colnames(features) %in% c("team", "season_year")), drop=F]);
+      data <- cbind(data, features^i);
     }
   }
-  return(aggregate(. ~ team + season_year, data=data, FUN=sum));
+  return(aggregate(. ~ next_team + season_year, data=data, FUN=sum));
 }
 
 # Function: computeFeatureTeamList
-# ==================================
+# ================================
 # recompute feature of teams in teamList (usually called after swap players)
 
-computeFeatureTeamList <- function(featurePlayer, teamList) {
-  featureTeam = list();
+computeFeatureTeamList <- function(featurePlayer, teamList, seasonList) {
+  featureTeams = list();
 
   for(team in teamList) {
-    row <- computeFeatureTeam(featurePlayer[featurePlayer$team == team,]);
-    featureTeam <- rbind(featureTeam, row);
+    for(season in seasonList) {
+      featTeam = computeFeatureTeam(
+          featurePlayer[featurePlayer$next_team == team & featurePlayer$season_year == season, !(colnames(featurePlayer) %in% c("player_id", "position"))]
+        );
+      featureTeams <- rbind(featureTeams, featTeam);
+    }
   }
 
-  return(featureTeam);
+  return(featureTeams);
 }
 
 # Function: computeGameFeature
@@ -138,59 +97,66 @@ computeGameFeature <- function(featTeamHome, featTeamAway) {
 ######################
 
 if(computeFeature) {
-  #feature_team <- aggregate(. ~ team + season_year, data=players, FUN=sum);
-# cleaning
+  # players_cleaned contains all the stats
   players_cleaned = players;
-  players_cleaned$player_id_orig  <- NULL;
-  players_cleaned$full_name       <- NULL;
-  players_cleaned$player_id       <- NULL;
-# svm cle_cleanedanup
-  players_cleaned$kicking_all_yds <- NULL;
-  players_cleaned$kicking_downed  <- NULL;
-  players_cleaned$kicking_rec_tds <- NULL;
-  players_cleaned$kickret_oob     <- NULL;
-  players_cleaned$kickret_touchback <- NULL;
-  players_cleaned$puntret_downed  <- NULL;
-  players_cleaned$puntret_oob     <- NULL;
-  players_cleaned$puntret_touchback <- NULL;
-  players_cleaned$rushing_loss    <- NULL;
-  players_cleaned$rushing_loss_yds <- NULL;
+  
+  # cleaning (removing useless string fields)
+  players_cleaned$full_name <- NULL;
+  players_cleaned$player_id_orig <- NULL;
+  message("-> Precomputing done.")
+  
+  # svm cle_cleanedanup
+  # players_cleaned$kicking_all_yds <- NULL;
+  # players_cleaned$kicking_downed  <- NULL;
+  # players_cleaned$kicking_rec_tds <- NULL;
+  # players_cleaned$kickret_oob     <- NULL;
+  # players_cleaned$kickret_touchback <- NULL;
+  # players_cleaned$puntret_downed  <- NULL;
+  # players_cleaned$puntret_oob     <- NULL;
+  # players_cleaned$puntret_touchback <- NULL;
+  # players_cleaned$rushing_loss    <- NULL;
+  # players_cleaned$rushing_loss_yds <- NULL;
 
-
+  # Computing clusters
   for (position in unique(players_cleaned$position) ) {
-    if (!(position %in% c("NA", "OG", "SAF"))) {
+    if (!(position %in% c("NA", "OG", "OT", "SAF", "UNK"))) {
       message("-> Clustering position: ", position)
-      predkmeans <- kmeans(players_cleaned[players_cleaned$position == position, !(colnames(players_cleaned) %in% c("team", "position","season_year")), drop=F], k);
+      predkmeans <- kmeans(players_cleaned[players_cleaned$position == position, !(colnames(players_cleaned) %in% c("team", "position","season_year", "next_team", "player_id")), drop=F], k);
       players_cleaned[, paste(position, 1:k, sep=".")] <- 0;
       for(cluster in 1:k) {
         players_cleaned[players_cleaned$position == position, paste(position, cluster, sep=".")] <- predkmeans$cluster == cluster;
       }
     }
   }
-  players_cleaned$position <- NULL
+  message("-> Clustering done.")
 
-  players_clusters = players_cleaned[, append(c(1, 2), grep("\\.", colnames(players_cleaned), perl=T))];
+  # Selecting only columns relative to the clusters (drop all the stats)
+  players_clusters <- players_cleaned[, append(
+    which(colnames(players_cleaned) %in% c("player_id", "position", "next_team", "season_year", "nbplays"))
+    , grep("\\.", colnames(players_cleaned), perl=T))
+    ];
 
-  #feature_team <- computeFeatureTeamList(players_cleaned, unique(players$team));
-  feature_team <- computeFeatureTeamList(players_clusters, unique(players$team));
+  # Computing features for each team
+  feature_team <- computeFeatureTeamList(players_clusters, unique(players$team), 2009:2012);
+  message("-> Team features computed.")
 
-# creating feature vector for teams
+  # creating feature vector for games based on the feature vector of the teams
+  feature_team$next_team <- droplevels(feature_team$next_team);
   x = list();
   ngames = nrow(games);
   for(game in 1:ngames) {
     if(game %% round(ngames / 10) == 0) {
       message("-> Loading game: ", ceiling(game / ngames * 100), "%");
     }
-
     row <- computeGameFeature(
-      feature_team[feature_team$team==games$home_team[game] & feature_team$season_year==games$season_year[game] - 1, -c(1, 2)],
-      feature_team[feature_team$team==games$away_team[game] & feature_team$season_year==games$season_year[game] - 1, -c(1, 2)]
+      feature_team[feature_team$next_team==games$home_team[game] & feature_team$season_year==games$season_year[game] - 1, -c(1, 2)],
+      feature_team[feature_team$next_team==games$away_team[game] & feature_team$season_year==games$season_year[game] - 1, -c(1, 2)]
     );
     x <- rbind(x, row)
   }
   
   if(featureSave) {
-    save(x, file=featureFile);
+    save(x, players_cleaned, players_clusters, feature_team, file=featureFile);
     message("Features saved at ", featureFile)
   }
 } else {
@@ -211,7 +177,7 @@ ytest = y[holdout]
 #################
 
 if(trainModel) {
-# train data using SVM
+  # train data using SVM
   message("+-> Training model...")
   
   if(linregModel) {
@@ -229,13 +195,13 @@ if(trainModel) {
     ymodtest = ptest;
   }
 
-# computing error
-# global error
+  # computing error
+  # global error
   errTrain = sum(ymodtrain != ytrain)/length(ytrain);
   errTest = sum(ymodtest != ytest)/length(ytest);
   message(paste("Training error:", round(errTrain, 2), "| Dev error", round(errTest, 2)));
 
-# displaying confusion table
+  # displaying confusion table
   message("Confusion train table:")
   restrain = table(ymodtrain ,ytrain)
   print(restrain)
@@ -246,7 +212,7 @@ if(trainModel) {
   
   message("--> Done training model")
 } else {
-  message("Loading model...")
+  message("+-> Loading model...")
   load(modelFile);
   message("--> Done loading model")
 }
@@ -254,6 +220,8 @@ if(trainModel) {
 if(crossvalidationErr) {
   s = sample(nrow(x));
   err = 0;
+
+  # compute cross validation
   for(i in 0:9) {
     holdout <- s[floor(i * nrow(x) / 10): floor((i+1) * nrow(x) / 10)];
     xcross <- x[-holdout,];
@@ -270,7 +238,6 @@ if(crossvalidationErr) {
       err <- err + sum(ymodcross != ycrosstest);
     }
   }
-
   message("-> Average cross validation error: ", round(err / nrow(x) * 100, 2), "%")
 }
 
@@ -281,13 +248,15 @@ if(crossvalidationErr) {
 if(timeErrorPlot) {
   message("+-> Plotting train and test error...")
   
+  # for dev/test graph, step size == number of training example / 30
   n = nrow(xtrain);
-  samples = seq(n/30, n, n/30);
+  sizes = seq(n/30, n, n/30);
   
   errTrainList = list();
   errTestList = list();
   
-  for(i in samples) {
+  # compute error for each sample size
+  for(i in sizes) {
     if(linregModel) {
       modi <- LiblineaR(data=xtrain[1:i,], labels=ytrain[1:i]);
       predTrain <- predict(modi, xtrain[1:i,]);
@@ -303,7 +272,7 @@ if(timeErrorPlot) {
       ytesti = predTest;
     }
 
-# computing error
+    # computing error
     errTrainList <- rbind(errTrainList, sum(ymodi != ytrain[1:i])/i);
     errTestList <- rbind(errTestList, sum(ytesti != ytest)/length(ytest));
   } 
@@ -343,22 +312,3 @@ if(modelSave & trainModel) {
 }
 
 
-################
-## Evaluation ##
-################
-
-evalTeamValue <- function(teamInd, teamsFeature) {
-  xteamtest = teamsFeature[teamsFeature$feature != teamInd,]; 
-  if(linregModel) {
-    ptest = predict(model, xtest);
-    ymodtrain = ptrain$predictions;
-    ymodtest = ptest$predictions;
-  }
-  if(svmModel) {
-    model = svm(x=xtrain, y=ytrain, type="C-classification") #, scale = TRUE, kernel = "sigmoid", degree = 3, gamma = if (is.vector(x)) 1 else 1 / ncol(x), coef0 = 0, cost = 1, nu = 0.5);
-    ptrain = predict(model, xtrain);
-    ptest = predict(model, xtest);
-    ymodtrain = ptrain;
-    ymodtest = ptest;
-  }
-}
