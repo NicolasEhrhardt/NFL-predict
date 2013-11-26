@@ -5,7 +5,7 @@ SELECT
 		pr.player_id AS player_id_orig
 		,pr.full_name
 		,pr.position
-		,pr.team
+		,pp.team
 		,g.gsis_id
 		-- Numbers
 		,CAST(SUBSTRING(pr.player_id from 4) AS INTEGER) AS player_id
@@ -123,7 +123,7 @@ WHERE		g.season_type = 'Regular'
  		AND g.season_year < 2013
 GROUP BY	pr.player_id
 		,pr.full_name
-		,pr.team
+		,pp.team
 		,g.gsis_id
 		,g.week
 		,g.season_year
