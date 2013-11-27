@@ -58,6 +58,9 @@ evaluateTeam <- function(featureTeam, model, evalTeam) {
 # Compute the prediction of the number of victories
 
 reassignmentValue <- function(evalTeam, reassignPlayer, reassignTeam) {
+  reassignPlayer <- cbind(unlist(reassignPlayer))
+  reassignTeam <- cbind(unlist(reassignTeam))
+
   feature_players_cur <<- players_clusters[players_clusters$season_year==2012,]
   feature_team_cur <<- feature_team[feature_team$season_year==2012,];
   model <<- model;
