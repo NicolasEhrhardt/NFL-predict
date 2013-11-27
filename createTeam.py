@@ -1,27 +1,28 @@
 import rpy2.robjects as ro
 
 def createTeams(teamNames,pos):
-    global allTeams
+    allTeams = {}
     for name in teamNames:
         allTeams[name] = list(playerIndex(name,pos))
+    return allTeams
 
-
-def dfs(myTeam, otherTeams, pastTrades, trade, depth):
+def dfs(myTeam, otherTeams, pastTrades, depth):
     print depth
     global solutions
     if depth == MAX_DEPTH:
         print depth, MAX_DEPTH
         cost = getValue(myTeamName)[0]
         print cost
+        pastTrades = tuple(pastTrades)
         if solutions['bestWin'] < cost: 
-            solutions = {'bestWin':cost,tuple(pastTrades):cost}
+            solutions = {'bestWin':cost,pastTrades:cost}
         elif solutions['bestWin'] == cost:
-            solutions[tuple(pastTrades)] = cost
+            solutions[pastTrades] = cost
         return
 
 
-    pastTradesCp = pastTrades[:]
-    pastTradesCp.append(trade)
+    #pastTradesCp = pastTrades[:]
+    #pastTradesCp.append(trade)
 
     #preTradeWin = getValue(myTeamName)[0]
     #ro.conversion.ri2py(preTradeWin)
@@ -39,12 +40,13 @@ def dfs(myTeam, otherTeams, pastTrades, trade, depth):
                 #otherTeams[teamName].insert(otherPlayerIndex,player)
                 myTeam.insert(playerIndex,otherPlayer)
                 swap(player,myTeamName,otherPlayer,teamName)
+                team2 = createTeams(teamNames,"WR")
+                print team2
                 #postTradeWin = getValueAndSwap(player,myTeamName, otherPlayer, teamName)[0]
                 
                 newTrade = "trade %s's %s for %s's %s" % (myTeamName, str(player), teamName, str(otherPlayer))
                 print newTrade
-                dfs(myTeam,otherTeams,pastTradesCp,\
-                    trade + [newTrade],depth+1)
+                dfs(myTeam,otherTeams,pastTrades + [newTrade],depth+1)
 
                 #Undo swap
                 swap(player,myTeamName,otherPlayer,teamName)
@@ -71,7 +73,6 @@ getValueAndSwap = ro.r['getValueAndSwap']
 
 
 MAX_DEPTH = 1
-allTeams = {}
 pos = "WR"
 teamNames = ["ARI","ATL","BAL"]
 myTeamName = 'ARI'
@@ -79,10 +80,11 @@ currWin = getValue(myTeamName)[0]
 print currWin
 solutions = {'bestWin':currWin}
 
-createTeams(teamNames,pos)
+allTeams = createTeams(teamNames,pos)
+print allTeams
 myTeam = allTeams[myTeamName]
 del allTeams[myTeamName]
-dfs(myTeam, allTeams, [], ["Begin"], depth=0)
+#dfs(myTeam, allTeams, ["Begin"], depth=0)
 print solutions
 
 

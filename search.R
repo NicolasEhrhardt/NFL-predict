@@ -72,29 +72,30 @@ feature_team_cur <- feature_team[feature_team$season_year==2012,];
 # This function is unfortunately particularly slow :(
 # nb: model is a constant variable created by the ML part
 # use levels(feature_team_cur$next_team) after "in" if you want to evaluate all the teams
-#for(team in c("ARI", "ATL")) {
-#  message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
-#}
+for(team in c("ARI", "ATL")) {
+  message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
+}
 
 # If you want to get a list of the players Id, use which (give index in a dataframe)
 # ex: I want to know the indexes of the players of ARI:
-# 
-#all <- which(feature_players_cur$next_team == "ARI" & feature_players_cur$position == "WR")
+ 
+all <- which(feature_players_cur$next_team == "ARI" & feature_players_cur$position == "WR")
 
 
 # Here, as an example, I will swap two players and recompute the evaluation for the two teams
-#message("swapping players")
+message("swapping players")
 #feature_players_cur <- swapPlayers(feature_players_cur, 1026, 535);
+feature_players_cur <- swapPlayers(feature_players_cur, 140, 535);
 
 # drop the previous feature vector for the two teams
-#feature_team_cur <- feature_team_cur[!feature_team_cur$next_team %in% c("ARI", "ATL"), ];
+feature_team_cur <- feature_team_cur[!feature_team_cur$next_team %in% c("ARI", "ATL"), ];
 
 # add recomputed feature for the two teams
-#feature_team_cur <- rbind(feature_team_cur, computeFeatureTeamList(feature_players_cur, c("ARI", "ATL"), c(2012)));
+feature_team_cur <- rbind(feature_team_cur, computeFeatureTeamList(feature_players_cur, c("ARI", "ATL"), c(2012)));
 
-#for(team in c("ARI", "ATL")) {
-#  message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
-#}
+for(team in c("ARI", "ATL")) {
+  message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
+}
 
 
 ################## Wrapper Functions ####################
@@ -107,8 +108,8 @@ getValueAndSwap <- function(player1,team1,player2,team2){
     feature_players_cur <- swapPlayers(feature_players_cur, player1, player2);
     feature_team_cur <- feature_team_cur[!feature_team_cur$next_team %in% c(team1, team2), ];
     feature_team_cur <- rbind(feature_team_cur, computeFeatureTeamList(feature_players_cur, c(team1, team2), c(2012)));
-    #val <- evaluateTeam(feature_team_cur, model, team);
-    #return(val);
+    val <- evaluateTeam(feature_team_cur, model, team);
+    return(val);
 }
 
 getValue <- function(team){
@@ -117,6 +118,9 @@ getValue <- function(team){
 }
 
 swap <- function(player1,team1,player2,team2){
+    message("Swapping")
+    print(player1)
+    print(player2)
     feature_players_cur <- players_clusters[players_clusters$season_year==2012,];
     feature_team_cur <- feature_team[feature_team$season_year==2012,];
     
@@ -124,6 +128,7 @@ swap <- function(player1,team1,player2,team2){
     feature_team_cur <- feature_team_cur[!feature_team_cur$next_team %in% c(team1, team2), ];
     feature_team_cur <- rbind(feature_team_cur, computeFeatureTeamList(feature_players_cur, c(team1, team2), c(2012)));
 }
+
 
     
 
@@ -135,3 +140,133 @@ playerIndex <- function(teamName,teamPos){
     players <- which(feature_players_cur$next_team == teamName & feature_players_cur$position == teamPos);
     return(players);
 }
+
+##### Code originally in Python #######
+
+createTeams <- function(teamNames,pos){
+    allTeams = c()
+    for(teamName in teamNames){
+        message(teamName)
+        names <- playerIndex(teamName,pos)
+        print(names)
+        temp <-c(list(names))
+        names(temp) <- c(teamName)
+        allTeams <- c(allTeams,temp)
+    }
+    return(allTeams)
+}
+
+dfs <- function(myTeam, otherTeams, pastTrades, depth){
+    
+    if(depth == MAX_DEPTH){
+        cost <- getValue(myTeamName);
+        print(cost)
+        if(solutions[["bestWin"]] < cost){
+            solutions <- c("bestWin" = cost);
+        }
+        else{
+            if(solutions[["bestWin"]] == cost){
+                temp <-c(cost);
+                names(temp) <- c(pastTrades);
+                solutions <- c(solutions,temp);
+            }
+        }
+        return();
+    }
+
+    
+    #for(name in names(allTeams)){
+    #    myTeam <- 
+    #    print(name); 
+    #    print(allTeams[[name]])
+    #}
+
+    for(player in myTeam[[myTeamName]]){
+        myPlayerIndex <- getPlayerIndex(myTeam,player,myTeamName)
+        myTeam <- removePlayer(myTeam,player,myTeamName)
+
+        for(otherTeamName in names(allTeams)){
+            for(otherPlayer in allTeams[[otherTeamName]]){
+
+                #Swap Players
+                otherPlayerIndex <- getPlayerIndex(otherTeams,otherPlayer,otherTeamName)
+                otherTeams <- removePlayer(otherTeams,otherPlayer,otherTeamName)
+               
+
+                # This would allow us to reswap with player we just traded, not necessary
+                #otherTeams[teamName].insert(otherPlayerIndex,player)
+                myTeam <- addPlayer(myTeam,otherPlayer,myTeamName,myPlayerIndex)
+                message("My Team")
+                print(myTeam)
+                message("Other Teams")
+                print(otherTeams)
+                swap(player,myTeamName,otherPlayer,otherTeamName)
+                #newTrade
+                dfs(myTeam,otherTeams,pastTrades,depth+1)
+
+                #Undo Swap
+                swap(player,myTeamName,otherPlayer,otherTeamName)
+                #otherTeams[teamName].remove(player)
+                print(otherTeams)
+                print(otherPlayer)
+                print(otherTeamName)
+                print(otherPlayerIndex)
+                otherTeams <- addPlayer(otherTeams,otherPlayer,otherTeamName,otherPlayerIndex)
+                myTeam <- removePlayer(myTeam,otherPlayer,myTeamName)
+                message("Undo My Team")
+                print(myTeam)
+                message("Undo Otheer Team")
+                print(otherTeams)
+            }
+        }
+        myTeam <- addPlayer(myTeam,player,myTeamName,myPlayerIndex)
+    }
+
+}
+
+getPlayerIndex <- function(allTeamList,playerNum,teamName){
+    temp <- allTeamList[[teamName]]
+    index <- which(temp == playerNum)
+    return(index)
+}
+
+removePlayer <- function(allTeamList,playerNum,teamName){
+    temp <- allTeamList[[teamName]]
+    temp <- temp[-which(temp == playerNum)]
+    teamIndex <- which(names(allTeamList) == teamName)
+    allTeamList <- allTeamList[-teamIndex]
+    tempTeam <- list(temp)
+    names(tempTeam) <- c(teamName)
+    allTeamList <- append(allTeamList,tempTeam,teamIndex-1)
+}
+
+addPlayer <- function(allTeamList,playerNum,teamName,index){
+   temp <- allTeamList[[teamName]]
+   temp <- append(temp,playerNum,index-1)
+   teamIndex <- which(names(allTeamList) == teamName)
+   allTeamList <- allTeamList[-teamIndex]
+   tempTeam <- list(temp)
+   names(tempTeam) <- c(teamName)
+   allTeamList <- append(allTeamList,tempTeam,teamIndex-1)
+}
+
+# Constants
+MAX_DEPTH <- 1
+pos <- "WR"
+teamNames <- list("ARI","ATL","BAL")
+myTeamName <- "ARI"
+currWin <- getValue(myTeamName)
+print(currWin)
+solutions <- c('bestWin'=currWin)
+
+# Get All Teams
+allTeams <- createTeams(teamNames,pos)
+
+# Create my Team
+myTeam <- list(allTeams[[myTeamName]])
+names(myTeam) <- c(myTeamName)
+
+# Remove my Team from All Teams
+allTeams <- allTeams[-which(names(allTeams) == myTeamName)]
+message("Starting dfs")
+dfs(myTeam,allTeams,c("hello"),0)
