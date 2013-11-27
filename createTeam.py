@@ -33,19 +33,30 @@ def dfs(myTeam, otherTeams, pastTrades, depth):
 
         for index,(teamName, team) in enumerate(otherTeams.iteritems()):
             for otherPlayerIndex,otherPlayer in enumerate(team):
-                
+                if DEBUG:
+                    print("\n\nSwapping a different player\n\n")
                 # Swap Players
                 otherTeams[teamName].remove(otherPlayer)
                 # This would allow us to reswap, not necessary
                 #otherTeams[teamName].insert(otherPlayerIndex,player)
                 myTeam.insert(playerIndex,otherPlayer)
-                swap(player,myTeamName,otherPlayer,teamName)
-                team2 = createTeams(teamNames,"WR")
-                print team2
-                #postTradeWin = getValueAndSwap(player,myTeamName, otherPlayer, teamName)[0]
                 
                 newTrade = "trade %s's %s for %s's %s" % (myTeamName, str(player), teamName, str(otherPlayer))
-                print newTrade
+                if DEBUG:
+                    team1 = createTeams(teamNames,"WR")
+                    for key,value in team1.iteritems():
+                        print key,value
+                        print newTrade
+                
+                swap(player,myTeamName,otherPlayer,teamName)
+                
+                if DEBUG:
+                    team2 = createTeams(teamNames,"WR")
+                    for key,value in team2.iteritems():
+                        print key,value
+                #postTradeWin = getValueAndSwap(player,myTeamName, otherPlayer, teamName)[0]
+                
+
                 dfs(myTeam,otherTeams,pastTrades + [newTrade],depth+1)
 
                 #Undo swap
@@ -58,33 +69,39 @@ def dfs(myTeam, otherTeams, pastTrades, depth):
         myTeam.insert(playerIndex,player)
 
 
-f = file("search.R")
+# R Features and Initialization
+f = file("search2.R")
 code = ''.join(f.readlines())
 result = ro.r(code)
 swap = ro.r['swap']
 playerIndex = ro.r['playerIndex']
 getValue = ro.r['getValue']
-getValueAndSwap = ro.r['getValueAndSwap']
-
-#ariIndex = playerIndex("ARI","WR")
-#atlIndex = playerIndex("ATL","WR")
 
 
 
-
-MAX_DEPTH = 1
+# Constants
+DEBUG = 0
+MAX_DEPTH = 2
 pos = "WR"
 teamNames = ["ARI","ATL","BAL"]
 myTeamName = 'ARI'
 currWin = getValue(myTeamName)[0]
-print currWin
 solutions = {'bestWin':currWin}
 
+# Setup
 allTeams = createTeams(teamNames,pos)
-print allTeams
+print "\n\nStarting Values\n\n"
+for key,value in allTeams.iteritems():
+    print key,value
 myTeam = allTeams[myTeamName]
 del allTeams[myTeamName]
-#dfs(myTeam, allTeams, ["Begin"], depth=0)
+numPlayers = sum(len(value) for key,value in allTeams)
+print "Will be performing %d swaps\nEstimated times is %d secs" % \
+(len(myTeam)*(numPlayers**2),len(myTeam)*(numPlayers**2))
+
+
+# Begin search and Print Soltuion
+dfs(myTeam, allTeams, ["Begin"], depth=0)
 print solutions
 
 

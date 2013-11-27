@@ -72,9 +72,11 @@ feature_team_cur <- feature_team[feature_team$season_year==2012,];
 # This function is unfortunately particularly slow :(
 # nb: model is a constant variable created by the ML part
 # use levels(feature_team_cur$next_team) after "in" if you want to evaluate all the teams
+
 for(team in c("ARI", "ATL")) {
   message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
 }
+
 
 # If you want to get a list of the players Id, use which (give index in a dataframe)
 # ex: I want to know the indexes of the players of ARI:
@@ -98,6 +100,36 @@ for(team in c("ARI", "ATL")) {
 }
 
 
+
+allTeams1 <- createTeams(list("ARI","ATL","BAL"),"WR")
+message("allTeams1")
+print(allTeams1)
+swap(535,"ARI",140,"ATL")
+#swap2(feature_players_cur,140,535)
+#getValueAndSwap(535,"ARI",140,"ATL")
+#feature_players_cur <- swapPlayers(feature_players_cur,140,535)
+
+
+
+allTeams2 <- createTeams(list("ARI","ATL","BAL"),"WR")
+message("allTeams2")
+print(allTeams2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ################## Wrapper Functions ####################
 
 getValueAndSwap <- function(player1,team1,player2,team2){
@@ -117,16 +149,21 @@ getValue <- function(team){
     return(val);
 }
 
+swap2 <- function(feature,player1,player2){
+    feature <<- swapPlayers(feature,140,535)
+}
+
 swap <- function(player1,team1,player2,team2){
     message("Swapping")
     print(player1)
     print(player2)
-    feature_players_cur <- players_clusters[players_clusters$season_year==2012,];
-    feature_team_cur <- feature_team[feature_team$season_year==2012,];
+    #feature_players_cur <<- players_clusters[players_clusters$season_year==2012,];
+    #feature_team_cur <<- feature_team[feature_team$season_year==2012,];
     
-    feature_players_cur <- swapPlayers(feature_players_cur, player1, player2);
-    feature_team_cur <- feature_team_cur[!feature_team_cur$next_team %in% c(team1, team2), ];
-    feature_team_cur <- rbind(feature_team_cur, computeFeatureTeamList(feature_players_cur, c(team1, team2), c(2012)));
+    feature_players_cur <<- swapPlayers(feature_players_cur, player1, player2);
+    #feature_players_cur <<- swapPlayers(feature_players_cur,140,535)
+    feature_team_cur <<- feature_team_cur[!feature_team_cur$next_team %in% c(team1, team2), ];
+    feature_team_cur <<- rbind(feature_team_cur, computeFeatureTeamList(feature_players_cur, c(team1, team2), c(2012)));
 }
 
 
@@ -148,7 +185,6 @@ createTeams <- function(teamNames,pos){
     for(teamName in teamNames){
         message(teamName)
         names <- playerIndex(teamName,pos)
-        print(names)
         temp <-c(list(names))
         names(temp) <- c(teamName)
         allTeams <- c(allTeams,temp)
@@ -196,10 +232,6 @@ dfs <- function(myTeam, otherTeams, pastTrades, depth){
                 # This would allow us to reswap with player we just traded, not necessary
                 #otherTeams[teamName].insert(otherPlayerIndex,player)
                 myTeam <- addPlayer(myTeam,otherPlayer,myTeamName,myPlayerIndex)
-                message("My Team")
-                print(myTeam)
-                message("Other Teams")
-                print(otherTeams)
                 swap(player,myTeamName,otherPlayer,otherTeamName)
                 #newTrade
                 dfs(myTeam,otherTeams,pastTrades,depth+1)
@@ -207,16 +239,8 @@ dfs <- function(myTeam, otherTeams, pastTrades, depth){
                 #Undo Swap
                 swap(player,myTeamName,otherPlayer,otherTeamName)
                 #otherTeams[teamName].remove(player)
-                print(otherTeams)
-                print(otherPlayer)
-                print(otherTeamName)
-                print(otherPlayerIndex)
                 otherTeams <- addPlayer(otherTeams,otherPlayer,otherTeamName,otherPlayerIndex)
                 myTeam <- removePlayer(myTeam,otherPlayer,myTeamName)
-                message("Undo My Team")
-                print(myTeam)
-                message("Undo Otheer Team")
-                print(otherTeams)
             }
         }
         myTeam <- addPlayer(myTeam,player,myTeamName,myPlayerIndex)
