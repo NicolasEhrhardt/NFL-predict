@@ -98,31 +98,31 @@ feature_team_cur <- feature_team[feature_team$season_year==2012,];
 # nb: model is a constant variable created by the ML part
 # use levels(feature_team_cur$next_team) after "in" if you want to evaluate all the teams
 
-for(team in c("ARI", "ATL")) {
-  message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
-}
+#for(team in c("ARI", "ATL")) {
+#  message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
+#}
 
 
 # If you want to get a list of the players Id, use which (give index in a dataframe)
 # ex: I want to know the indexes of the players of ARI:
  
-all <- which(feature_players_cur$next_team == "ARI" & feature_players_cur$position == "WR")
+#all <- which(feature_players_cur$next_team == "ARI" & feature_players_cur$position == "WR")
 
 
 # Here, as an example, I will swap two players and recompute the evaluation for the two teams
-message("swapping players")
+#message("swapping players")
 #feature_players_cur <- swapPlayers(feature_players_cur, 1026, 535);
-feature_players_cur <- swapPlayers(feature_players_cur, 140, 535);
+#feature_players_cur <- swapPlayers(feature_players_cur, 140, 535);
 
 # drop the previous feature vector for the two teams
-feature_team_cur <- feature_team_cur[!feature_team_cur$next_team %in% c("ARI", "ATL"), ];
+#feature_team_cur <- feature_team_cur[!feature_team_cur$next_team %in% c("ARI", "ATL"), ];
 
 # add recomputed feature for the two teams
-feature_team_cur <- rbind(feature_team_cur, computeFeatureTeamList(feature_players_cur, c("ARI", "ATL"), c(2012)));
+#feature_team_cur <- rbind(feature_team_cur, computeFeatureTeamList(feature_players_cur, c("ARI", "ATL"), c(2012)));
 
-for(team in c("ARI", "ATL")) {
-  message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
-}
+#for(team in c("ARI", "ATL")) {
+#  message("Evaluate team ", team, ": ", round(evaluateTeam(feature_team_cur, model, team) * 100, 2), "%");
+#}
 
 
 

@@ -7,6 +7,12 @@ def createTeams(teamNames,pos):
         allTeams[name] = list(playerIndex(name,pos))
     return allTeams
 
+def createPlayerNames(teams):
+    names = {}
+    for teamName,players in teams.iteritems():
+        playerNames = getPlayersName(players)
+        names[teamName] = list(playerNames)
+    return names
 
 def beamSearch(myTeam, otherTeams, playerTrade,teamTrade,depth):
     global beamWidth
@@ -21,12 +27,11 @@ def beamSearch(myTeam, otherTeams, playerTrade,teamTrade,depth):
     costs = costs[:beamWidth]
 
     for i in range(2,depth+1):
-        print "\n\n Depth " + str(i) + "\n\n"
+        print "\n\nDepth " + str(i) + "\n\n"
         numSearches = 0
         solutionsCopy = solutions.copy()
         solutions = {}
         solutionsCosts = {}
-
         
         for key,value in solutionsCopy.iteritems():
             if numSearches > beamWidth:
@@ -44,11 +49,6 @@ def dfs(myTeam, otherTeams, playerTrade, teamTrade, depth):
     global solutions
     global solutionsCost
     global possibleTradesPlayer
-    global numRValueCalls
-
-
-    
-    
     
     if depth == 1 or len(myTeam) == 0:
         playerSet = Set(playerTrade)
@@ -56,7 +56,6 @@ def dfs(myTeam, otherTeams, playerTrade, teamTrade, depth):
             possibleTradesPlayer.append(playerSet)
             #possibleTradesTeam.append(teamTrade)
             percentageWin = reassignmentValue(myTeamName,playerTrade,teamTrade)[0]
-            numRValueCalls += 1
             print percentageWin
             myTeamCp = list(myTeam)
             otherTeamsCp = dict(otherTeams)
@@ -100,7 +99,7 @@ def dfs(myTeam, otherTeams, playerTrade, teamTrade, depth):
         myTeam.insert(playerIndex,player)
 
 
-# R Features and Initialization
+#################################### R Features and Initialization ######################
 f = file("search2.R")
 code = ''.join(f.readlines())
 result = ro.r(code)
@@ -108,45 +107,114 @@ swap = ro.r['swap']
 playerIndex = ro.r['playerIndex']
 getValue = ro.r['getValue']
 reassignmentValue = ro.r['reassignmentValue']
-
+getPlayersName = ro.r['getPlayersName']
 
 
 #################################### Constants/Global Values ##########################
-numRValueCalls = 0
 DEBUG = 0
-pos = "WR"
-teamNames = ["ARI","ATL","BAL"]
-myTeamName = 'ARI'
-currWin = getValue(myTeamName)[0]
+pos = ""
+teamNames = []
+myTeamName = ""
+myTeam = []
 solutions = {}
 solutionsCost = {}
 possibleTradesPlayer = []
-beamWidth = 3          ########## Change this for width of beam search
-beamSearchDepth = 4    ########## Change this for depth of beam search
+beamWidth = -1          ########## Change this for width of beam search
+beamSearchDepth = -1    ########## Change this for depth of beam search
+playerNames = {}
 
 ##################################### Setup #########################################
-allTeams = createTeams(teamNames,pos)
-print "\n\nStarting Values\n\n"
-for key,value in allTeams.iteritems():
-    print key,value
-myTeam = allTeams[myTeamName]
-del allTeams[myTeamName]
-numPlayers = sum(len(value) for key,value in allTeams.iteritems())
-print "Will be performing %d swaps\nEstimated times is %f mins" % \
-(len(myTeam)*(numPlayers**2),float(len(myTeam)*(numPlayers**2))/60.0)
+
+def setup():
+    global allTeams
+    global playerNames
+    global myTeam
+    global myTeamName
+
+    allTeams = createTeams(teamNames,pos)
+    playerNames = createPlayerNames(allTeams)
+    print "\n\nStarting Values\n"
+    for key,value in allTeams.iteritems():
+        print key,value
+    myTeam = allTeams[myTeamName]
+    del allTeams[myTeamName]
+    numPlayers = sum(len(value) for key,value in allTeams.iteritems())
+    numSwaps = len(myTeam)*(numPlayers)+(beamSearchDepth-1)*beamWidth*len(myTeam)*numPlayers
+    print "Will be performing approximately %d swaps\nEstimated times is %f mins" % \
+    (numSwaps,float(numSwaps)/60.0)
+
 
 #################################### Main Section ###################################
 # Begin search and Print Soltuion
-beamSearch(myTeam, allTeams, [], [], beamSearchDepth)
-costs = sorted(solutionsCost.values(),reverse=True)
-maxCost = costs[0]
-
-for key,value in solutions.iteritems():
-    if value['percentageWin'] == maxCost:
-        print key
-        print value['percentageWin']
+def getTeamFromName(player):
+    for teamName,players in playerNames.iteritems():
+        if player in players:
+            return teamName
 
 
-print "max cost " + str(maxCost)
+# Trades must be in format alternating between myTeam and otherTeam
+def playersNamesFromTrades(trades):
+    myPlayers = []
+    tradedFor = []
+    for index, playerNum in enumerate(trades):
+        if index % 2 == 0:
+            myPlayers.append(playerNum)
+        else:
+            tradedFor.append(playerNum)
+        
+    print "\nMy Players traded away from %s: " % (myTeamName)
+    myPlayersNames = getPlayersName(myPlayers)
+    for player in myPlayersNames:
+        print player
+    print "\n"
+    
+    print "Players Traded For: "
+    playersTradedFor = getPlayersName(tradedFor)
+    for player in playersTradedFor:
+        print "%s from %s" % (player,getTeamFromName(player))
+    print "\n"
 
-######################################################################################
+
+def performDepthSearch():
+    #global myTeam
+    #global allTeams
+    #global solutions
+
+    beamSearch(myTeam, allTeams, [], [], beamSearchDepth)
+    costs = sorted(solutionsCost.values(),reverse=True)
+    maxCost = costs[0]
+
+    solNum = 1
+    for key,value in solutions.iteritems():
+        if value['percentageWin'] == maxCost:
+            print "Solution Number %d" % solNum
+            print "Original numbers: " +str(key)
+            playersNamesFromTrades(value['playerTrade'])
+            solNum += 1
+
+    print "\nBest Win Percentage " + str(maxCost) + "\n"
+
+
+
+def main():
+    global myTeamName
+    global teamNames
+    global allTeams
+    global pos
+    global beamWidth
+    global beamSearchDepth
+
+    pos = "WR"
+    teamNames = ["ARI","ATL","BAL"]
+    myTeamName = 'ARI'
+    beamWidth = 3          ########## Change this for width of beam search
+    beamSearchDepth = 2    ########## Change this for depth of beam search (Basically numers of trades)
+    setup()
+    performDepthSearch()
+
+    #playersNamesFromTrades()
+
+
+if __name__ == "__main__":
+    main()
+
