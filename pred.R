@@ -9,9 +9,10 @@
 # Features
 computeFeature = F
 featureSave = T
+featureFile = "model/logreg-feat-4k.RData"
+
 k = 4
 polyDeg = 1
-featureFile = "model/logreg-feat-kmeans-4k-1p-konly.RData"
 
 # Training
 trainModel = F # if set to F will load the model from modelFile
@@ -21,13 +22,13 @@ svmModel = F
 linregModel = T
 
 modelSave = T
-modelFile = "model/logreg-4k-1p-konly.RData"
+modelFile = "model/logreg-4k.RData"
 
 # Analysis
 crossvalidationErr = F
-timeErrorPlot = F
-graphSave = F
-graphFile = "img/logreg-err-4k-1p-konly.png"
+timeErrorPlot = T
+graphSave = T
+graphFile = "img/logreg-err-4k.png"
 
 # load in vectors
 file_players = "data/DataAll_Agg_v3.csv"
@@ -126,26 +127,30 @@ if(computeFeature) {
   # players_cleaned$rushing_loss_yds <- NULL;
 
   # Computing clusters
-  for (position in unique(players_cleaned$position) ) {
-    if (!(position %in% c("NA", "OG", "OT", "SAF", "UNK"))) {
-      message("-> Clustering position: ", position)
-      predkmeans <- kmeans(players_cleaned[players_cleaned$position == position, !(colnames(players_cleaned) %in% c("team", "position","season_year", "next_team", "player_id")), drop=F], k);
-      players_cleaned[, paste(position, 1:k, sep=".")] <- 0;
-      for(cluster in 1:k) {
-        players_cleaned[players_cleaned$position == position, paste(position, cluster, sep=".")] <- predkmeans$cluster == cluster;
+  if(k > 0) {
+    for (position in unique(players_cleaned$position) ) {
+      if (!(position %in% c("NA", "OG", "OT", "SAF", "UNK"))) {
+        message("-> Clustering position: ", position)
+        predkmeans <- kmeans(players_cleaned[players_cleaned$position == position, !(colnames(players_cleaned) %in% c("team", "position","season_year", "next_team", "player_id")), drop=F], k);
+        players_cleaned[, paste(position, 1:k, sep=".")] <- 0;
+        for(cluster in 1:k) {
+          players_cleaned[players_cleaned$position == position, paste(position, cluster, sep=".")] <- predkmeans$cluster == cluster;
+        }
       }
     }
-  }
-  message("-> Clustering done.")
+    message("-> Clustering done.")
 
-  # Selecting only columns relative to the clusters (drop all the stats)
-  players_clusters <- players_cleaned[, append(
-    which(colnames(players_cleaned) %in% c("player_id", "position", "next_team", "season_year", "nbplays"))
-    , grep("\\.", colnames(players_cleaned), perl=T))
+    # Selecting only columns relative to the clusters (drop all the stats)
+    feature_player <- players_cleaned[, append(
+      which(colnames(players_cleaned) %in% c("player_id", "position", "next_team", "season_year", "nbplays"))
+      , grep("\\.", colnames(players_cleaned), perl=T))
     ];
+  } else {
+    feature_player <- players_cleaned;
+  }
 
   # Computing features for each team
-  feature_team <- computeFeatureTeamList(players_clusters, unique(players$team), 2009:2012);
+  feature_team <- computeFeatureTeamList(feature_player, unique(players$team), 2009:2012);
   message("-> Team features computed.")
 
   # creating feature vector for games based on the feature vector of the teams
@@ -164,7 +169,7 @@ if(computeFeature) {
   }
   
   if(featureSave) {
-    save(x, players_cleaned, players_clusters, feature_team, file=featureFile);
+    save(x, players_cleaned, feature_player, feature_team, file=featureFile);
     message("Features saved at ", featureFile)
   }
 } else {
@@ -290,11 +295,11 @@ if(timeErrorPlot) {
     png(graphFile);
   }
 
-  plot(samples, errTrainList, 
+  plot(sizes, errTrainList, 
     ylim=range(errTrainList, errTestList), 
     type="b", col="green", 
     xlab="Training examples", ylab="Error");
-  lines(samples, errTestList, 
+  lines(sizes, errTestList, 
     type="b", col="red");
   legend("bottomright", legend=c("Training Error", "Test Error"), pch="oo", col=c("green", "red"));
   if(graphSave) {
