@@ -134,13 +134,18 @@ def setup():
     allTeams = createTeams(teamNames,pos)
     playerNames = createPlayerNames(allTeams)
     print "\n\nStarting Values\n"
+    for teamName,players in playerNames.iteritems():
+        print teamName
+        for player in players:
+            print "\t" + str(player)
+    print "\n"
     for key,value in allTeams.iteritems():
         print key,value
     myTeam = allTeams[myTeamName]
     del allTeams[myTeamName]
     numPlayers = sum(len(value) for key,value in allTeams.iteritems())
     numSwaps = len(myTeam)*(numPlayers)+(beamSearchDepth-1)*beamWidth*len(myTeam)*numPlayers
-    print "Will be performing approximately %d swaps\nEstimated times is %f mins" % \
+    print "\nWill be performing approximately %d swaps\nEstimated times is %f mins" % \
     (numSwaps,float(numSwaps)/60.0)
 
 
@@ -210,9 +215,18 @@ def main():
     beamWidth = 3          ########## Change this for width of beam search
     beamSearchDepth = 2    ########## Change this for depth of beam search (Basically numers of trades)
     setup()
+    
+    '''
+    Run performDepthSearch() to run a beam search with the variables above
+    '''
     performDepthSearch()
 
-    #playersNamesFromTrades()
+    '''
+    Run playerNamesFromTrades() with a list of alternating indexes representing trades
+    Team Name of each index must be in teamNames[] in order to print out correctly
+    This can be changed above
+    '''
+    #playersNamesFromTrades([975, 1026, 1496, 186])
 
 
 if __name__ == "__main__":
