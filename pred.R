@@ -89,7 +89,7 @@ computeFeatureTeamList <- function(featurePlayer, teamList, seasonList) {
 # return player Names
 
 getPlayersName <- function(playerInd) {
-  return unique(players$full_name[which(players$player_id %in% feature_players_cur$player_id[playerInd])])
+  return(unique(players$full_name[which(players$player_id %in% feature_players_cur$player_id[playerInd])]))
 }
 
 # Function: computeGameFeature
