@@ -7,13 +7,6 @@ When two CS students play with NFL data.
 Scripts
 =======
 
-Linear regression
------------------
-
-Is a simple regression done in matlab.
-
-    >  linregAnalysis('data/WRDataAll.csv')
-
 
 Victory prediction by SVM
 -------------------------
@@ -61,6 +54,14 @@ Creating a good team
 
 * The current version processes only a subset of possible swap due to a very poor performance of the feature extractors.
 
+Linear regression
+-----------------
+
+Is a simple regression done in matlab.
+
+    >  linregAnalysis('data/WRDataAll.csv')
+
+[Not working anymore, data was deleted]
 
 Folders organization
 --------------------
