@@ -3,30 +3,30 @@
 # Parameters
 
 # Features
-computeFeature = F
+computeFeature = T
 featureSave = T
-featureFile = "model/logreg-feat-6k-distind-mergepos.RData"
+featureFile = "model/logreg-feat-4k-ind-summean-mergepos.RData"
 
-k = 6
-distKmeans = T
+k = 4
+distKmeans = F
 indKmeans = T
 polyDeg = 1
 
 # Training
-trainModel = F # if set to F will load the model from modelFile
+trainModel = T # if set to F will load the model from modelFile
 
 # Chosen models
 svmModel = F
 linregModel = T
 
 modelSave = T
-modelFile = "model/logreg-6k-distind-mergepos.RData"
+modelFile = "model/logreg-4k-ind-summean-mergepos.RData"
 
 # Analysis
-crossvalidationErr = F
-timeErrorPlot = F
-graphSave = F
-graphFile = "img/logreg-err-6k-distind-mergepos.png"
+crossvalidationErr = T
+timeErrorPlot = T
+graphSave = T
+graphFile = "img/logreg-err-4k-ind-summean-mergepos.png"
 
 # load in vectors
 file_players = "data/DataAll_Agg_v3.csv"

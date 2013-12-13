@@ -17,7 +17,13 @@ swapPlayers <- function(featurePlayer, playerFrom, playerTo) {
   return(featurePlayer);
 }
 
+# Function: getPlayersName
+# ========================
+# return player Names
 
+getPlayersName <- function(playerInd) {
+  return(as.character(unique(players$full_name[which(players$player_id %in% feature_players_cur$player_id[unlist(playerInd)])])))
+}
 
 # Function: evaluateTeam
 # ======================

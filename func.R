@@ -3,7 +3,15 @@
 # compute feature of teams in teamList (usually called after swap players)
 
 computeFeatureTeam <- function(features) {
-  return(aggregate(. ~ next_team + season_year, data=features, FUN=sum));
+  # simple Sum
+  # return(aggregate(. ~ next_team + season_year, data=features, FUN=sum));
+  # double aggregation
+  sumData <- aggregate(. ~ next_team + season_year, data=features, FUN = max);
+  maxData <- aggregate(. ~ next_team + season_year, data=features, FUN = sum);
+  meanData <- aggregate(. ~ next_team + season_year, data=features, FUN = mean);
+  return(merge(sumData, maxData, by=c("next_team", "season_year")));
+  # triple aggregation
+  # return(merge(merge(sumData, maxData, by=c("next_team", "season_year")), meanData, by=c("next_team", "season_year")));
 }
 
 # Function: computeFeatureTeamList
@@ -25,13 +33,6 @@ computeFeatureTeamList <- function(featurePlayer, teamList, seasonList) {
   return(featureTeams);
 }
 
-# Function: getPlayersName
-# ========================
-# return player Names
-
-getPlayersName <- function(playerInd) {
-  return(as.character(unique(players$full_name[which(players$player_id %in% feature_players_cur$player_id[unlist(playerInd)])])))
-}
 
 # Function: computeGameFeature
 # ============================
