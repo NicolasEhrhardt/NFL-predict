@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "jsdom": "0.8.8"
+  }
+}
