@@ -61,7 +61,7 @@ reassignmentValue <- function(evalTeam, reassignPlayer, reassignTeam) {
   reassignPlayer <- cbind(unlist(reassignPlayer))
   reassignTeam <- cbind(unlist(reassignTeam))
 
-  feature_players_cur <<- players_clusters[players_clusters$season_year==2012,]
+  feature_players_cur <<- feature_player[feature_player$season_year==2012,]
   feature_team_cur <<- feature_team[feature_team$season_year==2012,];
   model <<- model;
 
@@ -85,7 +85,7 @@ reassignmentValue <- function(evalTeam, reassignPlayer, reassignTeam) {
 # For this example, we will load only 2012 data (hence predict 2013 season)
 
 # feature_players_cur contains one row per player with its stats. The variable next_team contains the team the player will play in the next year (here in 2013)
-feature_players_cur <- players_clusters[players_clusters$season_year==2012,]
+feature_players_cur <- feature_player[feature_player$season_year==2012,]
 
 # feature_teams_cur contains one row per team. To ask for a special team, use next_team
 feature_team_cur <- feature_team[feature_team$season_year==2012,];
@@ -138,7 +138,7 @@ swap <- function(player1,team1,player2,team2){
     message("Swapping")
     print(player1)
     print(player2)
-    #feature_players_cur <<- players_clusters[players_clusters$season_year==2012,];
+    #feature_players_cur <<- feature_player[feature_player$season_year==2012,];
     #feature_team_cur <<- feature_team[feature_team$season_year==2012,];
     
     feature_players_cur <<- swapPlayers(feature_players_cur, player1, player2);

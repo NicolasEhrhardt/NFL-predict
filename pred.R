@@ -1,17 +1,15 @@
 #!/usr/bin/Rscript
-# TODO
-# Function to evaluate team one team based on the other ones
-# - keep tracks of the teams in a more flexible way
-#   list of dataframes for the players per team?
 
 # Parameters
 
 # Features
 computeFeature = F
 featureSave = T
-featureFile = "model/logreg-feat-4k.RData"
+featureFile = "model/logreg-feat-6k-distind-mergepos.RData"
 
-k = 4
+k = 6
+distKmeans = T
+indKmeans = T
 polyDeg = 1
 
 # Training
@@ -22,13 +20,13 @@ svmModel = F
 linregModel = T
 
 modelSave = T
-modelFile = "model/logreg-4k.RData"
+modelFile = "model/logreg-6k-distind-mergepos.RData"
 
 # Analysis
 crossvalidationErr = F
-timeErrorPlot = T
-graphSave = T
-graphFile = "img/logreg-err-4k.png"
+timeErrorPlot = F
+graphSave = F
+graphFile = "img/logreg-err-6k-distind-mergepos.png"
 
 # load in vectors
 file_players = "data/DataAll_Agg_v3.csv"
@@ -52,54 +50,7 @@ library(e1071)
 ## Function library ##
 ######################
 
-# Function: computeFeatureTeam
-# ============================
-# compute feature of teams in teamList (usually called after swap players)
-
-computeFeatureTeam <- function(features) {
-  data <- features;
-  if(polyDeg > 1) {
-    for(i in 2:polyDeg) {
-      data <- cbind(data, features^i);
-    }
-  }
-  return(aggregate(. ~ next_team + season_year, data=data, FUN=sum));
-}
-
-# Function: computeFeatureTeamList
-# ================================
-# recompute feature of teams in teamList (usually called after swap players)
-
-computeFeatureTeamList <- function(featurePlayer, teamList, seasonList) {
-  featureTeams = list();
-
-  for(team in teamList) {
-    for(season in seasonList) {
-      featTeam = computeFeatureTeam(
-          featurePlayer[featurePlayer$next_team == team & featurePlayer$season_year == season, !(colnames(featurePlayer) %in% c("player_id", "position"))]
-        );
-      featureTeams <- rbind(featureTeams, featTeam);
-    }
-  }
-
-  return(featureTeams);
-}
-
-# Function: getPlayersName
-# ========================
-# return player Names
-
-getPlayersName <- function(playerInd) {
-  return(as.character(unique(players$full_name[which(players$player_id %in% feature_players_cur$player_id[unlist(playerInd)])])))
-}
-
-# Function: computeGameFeature
-# ============================
-# compute feature of one game
-
-computeGameFeature <- function(featTeamHome, featTeamAway) {
-  return(featTeamHome - featTeamAway);
-}
+source("func.R")
 
 ######################
 ## Compute features ##
@@ -115,28 +66,76 @@ if(computeFeature) {
   message("-> Precomputing done.")
   
   # svm cle_cleanedanup
-  # players_cleaned$kicking_all_yds <- NULL;
-  # players_cleaned$kicking_downed  <- NULL;
-  # players_cleaned$kicking_rec_tds <- NULL;
-  # players_cleaned$kickret_oob     <- NULL;
-  # players_cleaned$kickret_touchback <- NULL;
-  # players_cleaned$puntret_downed  <- NULL;
-  # players_cleaned$puntret_oob     <- NULL;
-  # players_cleaned$puntret_touchback <- NULL;
-  # players_cleaned$rushing_loss    <- NULL;
-  # players_cleaned$rushing_loss_yds <- NULL;
+  if (svmModel) {
+    players_cleaned$kicking_all_yds <- NULL;
+    players_cleaned$kicking_downed  <- NULL;
+    players_cleaned$kicking_rec_tds <- NULL;
+    players_cleaned$kickret_oob     <- NULL;
+    players_cleaned$kickret_touchback <- NULL;
+    players_cleaned$puntret_downed  <- NULL;
+    players_cleaned$puntret_oob     <- NULL;
+    players_cleaned$puntret_touchback <- NULL;
+    players_cleaned$rushing_loss    <- NULL;
+    players_cleaned$rushing_loss_yds <- NULL;
+  }
+
+  # Raw positions
+  # positions <- unique(players_cleaned$position);
+  
+  # Grouped positions
+  # - Offensive Line "C" Center "G" Guard "OT" 
+  # - Offensive Tackle "T" tackle "OG" Offensive Guard 
+  # - Defensive Line "DT" Defensive tackle "NT" Nose tackle
+  # - Safety "SAF" Safety "SS" Strong Safety "FS" Free safety
+  # - Drop "P" Punter "UNK" Unkown "LS" Long snapper "K" Kicker 
+  # - Line backer "ILB" Inside Line backer "OLB" Outside Line backer "LB" Line backer "MLB" Middle Line Backer
+  # - Left by themselves "CB" Cornerback "DB" Defensive back "DE" Defensive end "FB" Full back "QB" Quarterback "RB" Running back "TE" Tight End "WR Wide Receiver
+  positions <- list( 
+    c("C", "G", "OT"), 
+    c("T", "OG"),
+    c("DT", "NT"), 
+    c("SAF", "SS", "FS"),
+    c("P", "LS", "K"),
+    c("ILB", "OLB", "LB", "MLB"),
+    c("CB"),
+    c("DB"),
+    c("DE"),
+    c("FB"),
+    c("QB"),
+    c("RB"),
+    c("TE"),
+    c("WR"),
+    c("UNK")
+  )
 
   # Computing clusters
   if(k > 0) {
-    for (position in unique(players_cleaned$position) ) {
-      if (!(position %in% c("NA", "OG", "OT", "SAF", "UNK"))) {
-        message("-> Clustering position: ", position)
-        predkmeans <- kmeans(players_cleaned[players_cleaned$position == position, !(colnames(players_cleaned) %in% c("team", "position","season_year", "next_team", "player_id")), drop=F], k);
-        players_cleaned[, paste(position, 1:k, sep=".")] <- 0;
-        for(cluster in 1:k) {
-          players_cleaned[players_cleaned$position == position, paste(position, cluster, sep=".")] <- predkmeans$cluster == cluster;
+    for (position in positions) {
+     # if (!(position %in% c("NA", "OG", "OT", "SAF", "UNK"))) {
+        message("-> Clustering position: ", position[1])
+        predkmeans <- kmeans(players_cleaned[which(players_cleaned$position %in% position), !(colnames(players_cleaned) %in% c("team", "position","season_year", "next_team", "player_id")), drop=F], k);
+        
+        if(distKmeans) {
+          players_cleaned[, paste(position[1], 1:k, sep=".D.")] <- 0;
+          for(player in which(players_cleaned$position %in% position)) {
+            tot <- 0.;
+            for(cluster in 1:k) {
+              dist <- sqrt(sum((predkmeans$centers[cluster,] - players_cleaned[player, !(colnames(players_cleaned) %in% c("team", "position","season_year", "next_team", "player_id"))])^2));
+              players_cleaned[player, paste(position[1], cluster, sep=".D.")] <- dist;
+              tot <- tot + dist;
+            }
+
+            # normalizing
+            players_cleaned[player, paste(position[1], 1:k, sep=".D.")] <- 1 - players_cleaned[player, paste(position[1], 1:k, sep=".D.")] / tot;
+            players_cleaned[player, paste(position[1], 1:k, sep=".D.")] <- players_cleaned[player, paste(position[1], 1:k, sep=".D.")] / sum(players_cleaned[player, paste(position[1], 1:k, sep=".D.")]);
+          }
+        } 
+        if (indKmeans) {
+          players_cleaned[, paste(position[1], 1:k, sep=".I.")] <- 0;
+          for(cluster in 1:k) {
+            players_cleaned[which(players_cleaned$position %in% position), paste(position[1], cluster, sep=".I.")] <- predkmeans$cluster == cluster;
+          }
         }
-      }
     }
     message("-> Clustering done.")
 
@@ -247,7 +246,6 @@ if(crossvalidationErr) {
       modelcross <- LiblineaR(data=xcross, labels=ycross);
       pcross <- predict(modelcross, xcrosstest);
       ymodcross <- pcross$predictions;
-
       err <- err + sum(ymodcross != ycrosstest);
     }
   }
