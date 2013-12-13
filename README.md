@@ -47,6 +47,8 @@ Creating a good team
 
 ### Requirements
 
+* R
+
 * R2Py
 
 ### Executing
@@ -63,8 +65,12 @@ Creating a good team
 Folders organization
 --------------------
 
-``img/`` contains graphs used to analyze the machine learning part efficiency.
-``model/`` includes features and model computed in the past that can be reloaded without having to recompute them.
-``data/`` contains the data extracted from the postgreSQL database (the scrapped data was previously stored there)
-``query/`` stores the query used to clean and extract our dataset from the database
-``scrapenfl/`` hosts the nodejs script used to scrape data from the third party website
+* ``img/`` contains graphs used to analyze the machine learning part efficiency.
+
+* ``model/`` includes features and model computed in the past that can be reloaded without having to recompute them.
+
+* ``data/`` contains the data extracted from the postgreSQL database (the scrapped data was previously stored there)
+
+* ``query/`` stores the query used to clean and extract our dataset from the database
+
+* ``scraper/`` hosts the nodejs script used to scrape data from the third party website
